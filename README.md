@@ -8,3 +8,5 @@ Added features:
 Note:
 - In this app we won't take relation from a character to his relations.
 - A username and password is a character name and his birth date. for example: "Luke Skywalker" and "19BBY"
+- Where the fond to Ref comes from: a nice way to use mutable protected data in hooks and define what the 
+  context/service may change and what may the component change with useState 

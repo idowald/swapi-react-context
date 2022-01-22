@@ -1,4 +1,4 @@
-import { Entities } from '../../../types/entity';
+import { Entities } from '../../../../types/entity';
 import { peopleAttributes, planetAttributes, speciesAttributes } from './utils/attributes';
 import { TableRowHeader } from './tableRowHeader';
 

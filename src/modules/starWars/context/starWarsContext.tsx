@@ -1,12 +1,12 @@
 import {
-  createContext, useEffect, useMemo, useState,
+  createContext, useEffect, useMemo, useRef, useState,
 } from 'react';
 import { Entities } from '../../../types/entity';
 import { Encoding } from '../../../types/encoding';
 import { People } from '../../../types/people';
 import { Species } from '../../../types/species';
 import { Planet } from '../../../types/planet';
-import { fetchSWAPI } from '../../../services/swapi';
+import { fetchSWAPI, fetchSWAPINext } from '../../../services/swapi';
 
 interface StarWarsContextInt {
     entityType: Entities
@@ -26,6 +26,10 @@ interface StarWarsContextInt {
     setEntitiesList : (entities:(People[] | Species[] | Planet[]))=>void;
     errorMessage: string;
     isLoading: boolean;
+    next: string;
+    count : number;
+    // eslint-disable-next-line
+    setCurrent: (current:string)=>void;
 }
 
 export const StarWarsContext = createContext<StarWarsContextInt>(null!);
@@ -38,6 +42,13 @@ export function StarWarsContextProvider({ children }: { children: JSX.Element })
   const [encoding, setEncoding] = useState<Encoding>(Encoding.NORMAL);
   const [errorMessage, setErrorMessage] = useState('');
   const [entitiesList, setEntitiesList] = useState<People[] | Species[] | Planet[]>([]);
+  const countRef = useRef(0);
+  const nextRef = useRef('');
+  // current which is controlled by the context
+  const currentRef = useRef('');
+  // current is controlled by the component
+  const [current, setCurrent] = useState('');
+
   const value = useMemo(
     () => ({
       entityType,
@@ -52,27 +63,50 @@ export function StarWarsContextProvider({ children }: { children: JSX.Element })
       setEncoding,
       isLoading,
       errorMessage,
+      count: countRef.current,
+      next: nextRef.current,
+      current,
+      setCurrent,
     }),
     [encoding,
       selectedEntity,
       entitiesList,
       search,
       isLoading,
-      errorMessage],
+      errorMessage,
+      current],
   );
   useEffect(() => {
     const abortController = new AbortController();
     setIsLoading(true);
-    fetchSWAPI({ entities: entityType, query: search, format: encoding }, abortController.signal)
-      .then((response) => {
-        setEntitiesList(response.results);
-      }).catch((error) => {
-        setErrorMessage(error.message);
-      }).finally(() => {
-        setIsLoading(false);
-      });
+    // TODO code duplication
+    if (!currentRef.current || currentRef.current === current) {
+      fetchSWAPI({ entities: entityType, query: search, format: encoding }, abortController.signal)
+        .then((response) => {
+          countRef.current = response.count;
+          nextRef.current = response.next;
+          setEntitiesList(response.results);
+        }).catch((error) => {
+          setErrorMessage(error.message);
+        }).finally(() => {
+          setIsLoading(false);
+        });
+    } else {
+      currentRef.current = current;
+      fetchSWAPINext(current, abortController.signal)
+        .then((response) => {
+          countRef.current = response.count;
+          nextRef.current = response.next;
+          setEntitiesList([...entitiesList, ...response.results]);
+        }).catch((error) => {
+          setErrorMessage(error.message);
+        }).finally(() => {
+          setIsLoading(false);
+        });
+    }
+
     return () => abortController.abort();
-  }, [entityType, search, encoding]);
+  }, [entityType, search, encoding, current]);
 
   return (
     <StarWarsContext.Provider value={value}>

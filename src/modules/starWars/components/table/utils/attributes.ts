@@ -1,8 +1,8 @@
 // A way to iterate the attributes of each object to keep an order on the f.e
 // and to avoid using Object.key "randomness"
-import { People } from '../../../../types/people';
-import { Species } from '../../../../types/species';
-import { Planet } from '../../../../types/planet';
+import { People } from '../../../../../types/people';
+import { Species } from '../../../../../types/species';
+import { Planet } from '../../../../../types/planet';
 
 export const peopleAttributes: (keyof People)[] = ['name', 'birth_year', 'eye_color', 'gender', 'hair_color', 'height', 'mass', 'skin_color'];
 export const speciesAttributes : (keyof Species)[] = ['name',
