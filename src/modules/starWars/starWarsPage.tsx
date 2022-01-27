@@ -1,42 +1,58 @@
 import * as _ from 'lodash';
 
-import { ChangeEvent } from 'react';
+import React, { ChangeEvent } from 'react';
+import Modal from 'react-modal';
+import { Alert, TextField } from '@mui/material';
 import { useStarWars } from './hooks/useStarWars';
-import { Table } from './components/table/table';
 import { Selector } from '../common/selector/selector';
 import { Entities } from '../../types/entity';
-import { Input } from '../common/input/input';
+import { InfiniteList } from './components/infiniteList/infiniteList';
+import { Graph } from './components/graph/graph';
+import { Spinner } from '../common/spinner/spinner';
 
 export function StarWarsPage() {
   const {
-    entityType,
-    entitiesList, errorMessage, isLoading,
+    errorMessage, isLoading,
     setEntityType,
+    entityType,
     setSearch,
-    next,
-    setCurrent,
+    entitiesList, fetchNextPage, count,
+    setSelectedEntity,
+    selectedEntity,
+    search,
   } = useStarWars();
-  const searchTerm = (e: ChangeEvent<HTMLInputElement>) => setSearch(e.target.value);
+  const changeSearchTerm = (e: ChangeEvent<HTMLInputElement>) => setSearch(e.target.value);
 
   return (
-    <div>
-      <Selector
-        label="Select an entity"
-        name="selector"
-        onChange={setEntityType}
-        options={[Entities.Species, Entities.Planets, Entities.People]}
-        selected={Entities.People}
-      />
-      <Input onChange={_.debounce(searchTerm, 400)} />
-      <Table
-        entityType={entityType}
-        entities={entitiesList}
-        nextCallback={() => setCurrent(next)}
-        hasMore={!!next}
-      />
-      <div>TODO some interaction with isLoading</div>
-      <div>{isLoading}</div>
-      <div>{errorMessage}</div>
-    </div>
+    <>
+      <div>
+        <div>
+          <Selector
+            name="selector"
+            onChange={setEntityType}
+            options={[Entities.Species, Entities.Planets, Entities.People]}
+            selected={Entities.People}
+          />
+          <TextField variant="standard" onChange={_.debounce(changeSearchTerm, 400)} defaultValue={search} />
+        </div>
+        <InfiniteList
+          entityType={entityType}
+          search={search}
+          entitiesList={entitiesList}
+          fetchNextPage={fetchNextPage}
+          count={count}
+          onClickRow={((entity) => setSelectedEntity(entity))}
+        />
+        <Spinner display={isLoading} />
+        {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
+      </div>
+      <Modal
+        isOpen={!!selectedEntity}
+        onRequestClose={() => setSelectedEntity(null)}
+        contentLabel={`Show ${selectedEntity?.name}`}
+      >
+        <Graph />
+      </Modal>
+    </>
   );
 }

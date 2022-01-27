@@ -1,15 +1,18 @@
 import {
   createContext, useEffect, useMemo, useRef, useState,
 } from 'react';
-import { Entities } from '../../../types/entity';
-import { Encoding } from '../../../types/encoding';
+
+import { debounce } from 'lodash';
+import { Entities, EntityType } from '../../../types/entity';
+import { Encoding, EncodingType } from '../../../types/encoding';
 import { People } from '../../../types/people';
 import { Species } from '../../../types/species';
 import { Planet } from '../../../types/planet';
-import { fetchSWAPI, fetchSWAPINext } from '../../../services/swapi';
+import { fetchSWAPINext } from '../../../services/swapi';
+import { useFetchStarWarsOnStateUpdate } from '../hooks/useStarWars';
 
-interface StarWarsContextInt {
-    entityType: Entities
+export interface StarWarsContextInt {
+    entityType: EntityType
     // eslint-disable-next-line
     setEntityType: (entityType: Entities)=>void;
     search: string;
@@ -17,26 +20,23 @@ interface StarWarsContextInt {
     setSearch: (searchTerm:string)=>void;
     selectedEntity: People | Species | Planet | null;
     // eslint-disable-next-line
-    setSelectedEntity: (entity: People | Species | Planet)=>void;
-    encoding: Encoding;
+    setSelectedEntity: (entity: People | Species | Planet | null)=>void;
+    encoding: EncodingType;
     // eslint-disable-next-line
-    setEncoding: (encoding:Encoding)=>void;
+    setEncoding: (encoding:EncodingType)=>void;
     entitiesList : People[] | Species[] | Planet[];
-    // eslint-disable-next-line
-    setEntitiesList : (entities:(People[] | Species[] | Planet[]))=>void;
     errorMessage: string;
     isLoading: boolean;
-    next: string;
     count : number;
-    // eslint-disable-next-line
-    setCurrent: (current:string)=>void;
+    fetchNextPage: ()=>Promise<any>;
+    cleanState :()=>void;
 }
 
 export const StarWarsContext = createContext<StarWarsContextInt>(null!);
-
+const DEFAULT_ENTITY = Entities.Species;
 export function StarWarsContextProvider({ children }: { children: JSX.Element }) {
   const [isLoading, setIsLoading] = useState(false);
-  const [entityType, setEntityType] = useState(Entities.People);
+  const [entityType, setEntityType] = useState(DEFAULT_ENTITY);
   const [search, setSearch] = useState('');
   const [selectedEntity, setSelectedEntity] = useState<People | Species | Planet| null>(null);
   const [encoding, setEncoding] = useState<Encoding>(Encoding.NORMAL);
@@ -44,56 +44,10 @@ export function StarWarsContextProvider({ children }: { children: JSX.Element })
   const [entitiesList, setEntitiesList] = useState<People[] | Species[] | Planet[]>([]);
   const countRef = useRef(0);
   const nextRef = useRef('');
-  // current which is controlled by the context
-  const currentRef = useRef('');
   // current is controlled by the component
-  const [current, setCurrent] = useState('');
-
-  const value = useMemo(
-    () => ({
-      entityType,
-      encoding,
-      setEntityType,
-      selectedEntity,
-      entitiesList,
-      setEntitiesList,
-      setSelectedEntity,
-      search,
-      setSearch,
-      setEncoding,
-      isLoading,
-      errorMessage,
-      count: countRef.current,
-      next: nextRef.current,
-      current,
-      setCurrent,
-    }),
-    [encoding,
-      selectedEntity,
-      entitiesList,
-      search,
-      isLoading,
-      errorMessage,
-      current],
-  );
-  useEffect(() => {
-    const abortController = new AbortController();
-    setIsLoading(true);
-    // TODO code duplication
-    if (!currentRef.current || currentRef.current === current) {
-      fetchSWAPI({ entities: entityType, query: search, format: encoding }, abortController.signal)
-        .then((response) => {
-          countRef.current = response.count;
-          nextRef.current = response.next;
-          setEntitiesList(response.results);
-        }).catch((error) => {
-          setErrorMessage(error.message);
-        }).finally(() => {
-          setIsLoading(false);
-        });
-    } else {
-      currentRef.current = current;
-      fetchSWAPINext(current, abortController.signal)
+  const getNextDebounced = debounce(() => {
+    if (nextRef.current) {
+      fetchSWAPINext(nextRef.current)
         .then((response) => {
           countRef.current = response.count;
           nextRef.current = response.next;
@@ -104,9 +58,62 @@ export function StarWarsContextProvider({ children }: { children: JSX.Element })
           setIsLoading(false);
         });
     }
+  }, 300);
+  const fetchNextPage = () => {
+    // a workaround for react-virtualized problem with loadMoreRows
+    getNextDebounced();
+    return Promise.resolve();
+  };
+  const cleanState = () => {
+    setSearch('');
+    setEntityType(DEFAULT_ENTITY);
+  };
 
-    return () => abortController.abort();
-  }, [entityType, search, encoding, current]);
+  const value = useMemo(
+    () => ({
+      entityType,
+      encoding,
+      setEntityType,
+      selectedEntity,
+      entitiesList,
+      setSelectedEntity,
+      search,
+      setSearch,
+      setEncoding,
+      isLoading,
+      errorMessage,
+      count: countRef.current,
+      fetchNextPage,
+      cleanState,
+    }),
+    [encoding,
+      selectedEntity,
+      entitiesList,
+      search,
+      isLoading,
+      errorMessage,
+    ],
+  );
+  // clear errors after few seconds
+  useEffect(() => {
+    if (errorMessage) {
+      const timeout = setTimeout(() => {
+        setErrorMessage('');
+      }, 4000);
+      return () => clearTimeout(timeout);
+    }
+  }, [errorMessage]);
+
+  useFetchStarWarsOnStateUpdate({
+    setIsLoading,
+    entityType,
+    search,
+    encoding,
+    countRef,
+    nextRef,
+    setEntitiesList,
+    setErrorMessage,
+  });
 
   return (
     <StarWarsContext.Provider value={value}>

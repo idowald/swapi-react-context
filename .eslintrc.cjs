@@ -27,6 +27,10 @@ module.exports = {
     "import/prefer-default-export": "off",
     "consistent-return": "off",
     "no-debugger": "off",
+    "jsx-a11y/interactive-supports-focus": "off",
+    "jsx-a11y/click-events-have-key-events": "off",
+    "no-param-reassign": "off",
+    "import/no-extraneous-dependencies": "off"
   },
   "overrides": [
     {

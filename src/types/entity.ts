@@ -4,3 +4,4 @@ export const enum Entities{
     People = 'people',
     Species = 'species',
 }
+export type EntityType = Entities.Planets | Entities. People | Entities.Species;

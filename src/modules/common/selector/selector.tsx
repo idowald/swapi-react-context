@@ -1,27 +1,39 @@
+import { styled } from '@mui/system';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import FormControl from '@mui/material/FormControl';
 import { Entities } from '../../../types/entity';
 
 interface Props{
-    label: string;
     name: string;
     // eslint-disable-next-line
     onChange : (entityType: Entities)=>void;
     options : string[];
     selected: string;
 }
-
+const MarginedForm = styled(FormControl)({ marginTop: '-5px' });
 export function Selector({
-  label, name, onChange, options, selected,
+  name, onChange, options, selected,
 }:Props) {
   return (
-    <div>
-      <label htmlFor={name}>{label}</label>
-      <select
-        name={name}
+    <MarginedForm>
+      <RadioGroup
+        row
+        aria-labelledby="row-radio-buttons-group-label"
         defaultValue={selected}
         onChange={(e) => onChange(e.target.value as Entities)}
+        name={name}
       >
-        {options.map((option) => <option key={option} value={option}>{option}</option>)}
-      </select>
-    </div>
+        {options.map((option) => (
+          <FormControlLabel
+            key={option}
+            value={option}
+            control={<Radio />}
+            label={option}
+          />
+        ))}
+      </RadioGroup>
+    </MarginedForm>
   );
 }
